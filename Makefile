@@ -17,7 +17,7 @@ ent-new:
 .PHONY: run
 run:
 	clear
-	go run cmd/web/main.go
+	go run cmd/main.go
 
 # Run all tests
 .PHONY: test
