@@ -1,6 +1,6 @@
 module github.com/mikestefanello/pagoda
 
-go 1.22.4
+go 1.22.8
 
 require (
 	entgo.io/ent v0.13.1
