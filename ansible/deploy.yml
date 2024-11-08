@@ -1,0 +1,97 @@
+---
+- name: Deploy Go Application
+  hosts: webserver
+  become: yes
+  vars:
+    app_name: myproject
+    app_dir: /opt/{{ app_name }}
+    go_version: "1.23"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - golang-{{ go_version }}
+          - redis-server
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Configure UFW
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - "22"
+        - "80"
+        - "443"
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    - name: Install and configure Fail2ban
+      apt:
+        name: fail2ban
+        state: present
+      notify:
+        - Start fail2ban
+
+    - name: Copy application files
+      copy:
+        src: "{{ playbook_dir }}/{{ app_name }}/"
+        dest: "{{ app_dir }}"
+
+    - name: Build Go application
+      command:
+        cmd: go build -o {{ app_name }}
+        chdir: "{{ app_dir }}/cmd"
+
+    - name: Set up systemd service
+      template:
+        src: app.service.j2
+        dest: /etc/systemd/system/{{ app_name }}.service
+      notify:
+        - Restart application
+
+    - name: Configure Nginx
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/{{ app_name }}
+      notify:
+        - Reload nginx
+
+    - name: Enable Nginx site
+      file:
+        src: /etc/nginx/sites-available/{{ app_name }}
+        dest: /etc/nginx/sites-enabled/{{ app_name }}
+        state: link
+      notify:
+        - Reload nginx
+
+    - name: Obtain SSL certificate
+      command:
+        cmd: certbot --nginx -d {{ domain_name }} --non-interactive --agree-tos --email {{ admin_email }}
+      when: use_ssl | bool
+
+  handlers:
+    - name: Start fail2ban
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: yes
+
+    - name: Restart application
+      systemd:
+        name: "{{ app_name }}"
+        state: restarted
+
+    - name: Reload nginx
+      systemd:
+        name: nginx
+        state: reloaded

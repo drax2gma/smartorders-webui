@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"github.com/go-redis/redis/v8"
@@ -22,43 +22,27 @@ func CloseRedisClient() {
 	RedisClient.Close()
 }
 
-func GetItems() ([]Item, error) {
+func GetCustomer(username string) (Customer, error) {
+	return Customer{}, nil
+}
+
+func AddCustomer(user Customer) error {
+	return nil
+}
+
+func DeleteCustomer(username string) error {
+	return nil
+}
+
+func UpdateCustomer(user Customer) error {
+	return nil
+}
+
+func GetOrders() ([]Item, error) {
 	return []Item{}, nil
 }
 
-func AddItem(item Item) error {
-	return nil
-}
-
-func DeleteItem(id string) error {
-	return nil
-}
-
-func UpdateItem(item Item) error {
-	return nil
-}
-
-func GetUser(username string) (User, error) {
-	return User{}, nil
-}
-
-func AddUser(user User) error {
-	return nil
-}
-
-func DeleteUser(username string) error {
-	return nil
-}
-
-func UpdateUser(user User) error {
-	return nil
-}
-
-func GetOrders() ([]Order, error) {
-	return []Order{}, nil
-}
-
-func AddOrder(order Order) error {
+func AddOrder(order Item) error {
 	return nil
 }
 
@@ -66,12 +50,12 @@ func DeleteOrder(id string) error {
 	return nil
 }
 
-func UpdateOrder(order Order) error {
+func UpdateOrder(order Item) error {
 	return nil
 }
 
-func GetOrdersByUser(username string) ([]Order, error) {
-	return []Order{}, nil
+func GetOrdersByCustomer(username string) ([]Item, error) {
+	return []Item{}, nil
 }
 
 func GetOrder(id string) (Order, error) {

@@ -1,15 +1,15 @@
 package main
 
 import (
-	db "smartorders-webui/internal/database"
-	"smartorders-webui/internal/handlers"
-	i18n "smartorders-webui/pkg/i18n"
+	"smartorders-webui/internal/common"
+	"smartorders-webui/internal/db"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
+
 	e := echo.New()
 
 	// Middleware
@@ -20,7 +20,7 @@ func main() {
 	db.InitRedis()
 
 	// Initialize i18n
-	i18n.InitTranslator()
+	common.InitTranslator()
 
 	// Routes
 	e.Static("/static", "webui/static")
