@@ -35,6 +35,7 @@ func seedUsers() {
 			Name:      fmt.Sprintf("Felhasználó %d", i+1),
 			Email:     email,
 			Password:  string(hashedPassword),
+			Balance:   0, // Kezdeti egyenleg
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
