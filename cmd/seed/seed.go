@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -13,14 +14,32 @@ import (
 )
 
 func main() {
+	// Parancssori flag definiálása
+	destroyDB := flag.Bool("destroy-redis-database", false, "Destroy all data in Redis database")
+	flag.Parse()
+
 	if err := database.InitRedis("localhost:6379"); err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+
+	// Ha a --destroy-redis-database flag be van állítva, töröljük az adatbázist
+	if *destroyDB {
+		if err := destroyRedisDatabase(); err != nil {
+			log.Fatalf("Failed to destroy Redis database: %v", err)
+		}
+		fmt.Println("Redis database has been cleared.")
+		return
 	}
 
 	seedUsers()
 	seedProducts()
 
 	fmt.Println("Seeding completed successfully!")
+}
+
+func destroyRedisDatabase() error {
+	ctx := database.RedisClient.Context()
+	return database.RedisClient.FlushAll(ctx).Err()
 }
 
 func seedUsers() {
