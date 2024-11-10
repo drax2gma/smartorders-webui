@@ -4,77 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"log"
 	"time"
 
+	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
-	"github.com/go-redis/redis/v8"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var redisClient *redis.Client
-
 func main() {
-	redisClient = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
+	if err := database.InitRedis("localhost:6379"); err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
 
-	// Töröljük a meglévő adatokat
-	clearExistingData()
-
-	// Új adatok beszúrása
-	seedProducts()
 	seedUsers()
+	seedProducts()
 
 	fmt.Println("Seeding completed successfully!")
-}
-
-func clearExistingData() {
-	ctx := context.Background()
-
-	// Töröljük az összes terméket
-	redisClient.Del(ctx, "products")
-
-	// Töröljük az összes felhasználót
-	keys, _ := redisClient.Keys(ctx, "user:*").Result()
-	if len(keys) > 0 {
-		redisClient.Del(ctx, keys...)
-	}
-
-	fmt.Println("Existing data cleared.")
-}
-
-func seedProducts() {
-	candies := []string{"Csokoládé", "Gumicukor", "Nyalóka", "Karamella", "Zselés cukor"}
-	clothes := []string{"Póló", "Nadrág", "Kabát", "Sapka", "Zokni"}
-
-	for i := 0; i < 80; i++ {
-		var product models.Product
-		if i < 40 {
-			product = models.Product{
-				ID:          uint(i + 1),
-				Name:        candies[rand.Intn(len(candies))],
-				Description: "Finom édesség",
-				Price:       float64(rand.Intn(1000) + 100),
-				Stock:       rand.Intn(100) + 50,
-				CreatedAt:   time.Now(),
-				UpdatedAt:   time.Now(),
-			}
-		} else {
-			product = models.Product{
-				ID:          uint(i + 1),
-				Name:        clothes[rand.Intn(len(clothes))],
-				Description: "Divatos ruhadarab",
-				Price:       float64(rand.Intn(10000) + 1000),
-				Stock:       rand.Intn(50) + 10,
-				CreatedAt:   time.Now(),
-				UpdatedAt:   time.Now(),
-			}
-		}
-
-		jsonProduct, _ := json.Marshal(product)
-		redisClient.HSet(context.Background(), "products", fmt.Sprintf("%d", product.ID), jsonProduct)
-	}
 }
 
 func seedUsers() {
@@ -85,23 +31,65 @@ func seedUsers() {
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(fmt.Sprintf("password%d", i+1)), bcrypt.DefaultCost)
 
 		user := models.User{
-			ID:        uint(i + 1),
+			ID:        models.GenerateUserID(email),
 			Name:      fmt.Sprintf("Felhasználó %d", i+1),
 			Email:     email,
+			Password:  string(hashedPassword),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
 
 		jsonUser, _ := json.Marshal(user)
-		err := redisClient.Set(ctx, "user:"+email, jsonUser, 0).Err()
+		err := database.RedisClient.Set(ctx, fmt.Sprintf("user:%s", user.ID), jsonUser, 0).Err()
 		if err != nil {
-			fmt.Printf("Error seeding user %s: %v\n", email, err)
+			log.Printf("Error seeding user %s: %v\n", user.Email, err)
 		}
 
-		// Külön tároljuk a jelszó hash-t
-		err = redisClient.Set(ctx, "user:"+email+":password", string(hashedPassword), 0).Err()
+		// Store email to ID mapping
+		err = database.RedisClient.Set(ctx, fmt.Sprintf("email:%s", user.Email), user.ID, 0).Err()
 		if err != nil {
-			fmt.Printf("Error seeding password for user %s: %v\n", email, err)
+			log.Printf("Error storing email mapping for %s: %v\n", user.Email, err)
+		}
+
+		// Store password separately
+		err = database.RedisClient.Set(ctx, fmt.Sprintf("user:%s:password", user.ID), user.Password, 0).Err()
+		if err != nil {
+			log.Printf("Error storing password for user %s: %v\n", user.Email, err)
+		}
+	}
+}
+
+func seedProducts() {
+	ctx := context.Background()
+	products := []models.Product{
+		{ID: 1, Name: "Laptop", Price: 999.99, Stock: 10},
+		{ID: 2, Name: "Smartphone", Price: 499.99, Stock: 20},
+		{ID: 3, Name: "Headphones", Price: 99.99, Stock: 50},
+		{ID: 4, Name: "Tablet", Price: 299.99, Stock: 15},
+		{ID: 5, Name: "Smartwatch", Price: 199.99, Stock: 30},
+	}
+
+	for _, product := range products {
+		jsonProduct, err := json.Marshal(product)
+		if err != nil {
+			log.Printf("Error marshaling product %s: %v\n", product.Name, err)
+			continue
+		}
+
+		err = database.RedisClient.Set(ctx, fmt.Sprintf("product:%d", product.ID), jsonProduct, 0).Err()
+		if err != nil {
+			log.Printf("Error seeding product %s: %v\n", product.Name, err)
+		}
+	}
+
+	// Store all products in a single key
+	allProductsJSON, err := json.Marshal(products)
+	if err != nil {
+		log.Printf("Error marshaling all products: %v\n", err)
+	} else {
+		err = database.RedisClient.Set(ctx, "products", allProductsJSON, 0).Err()
+		if err != nil {
+			log.Printf("Error storing all products: %v\n", err)
 		}
 	}
 }

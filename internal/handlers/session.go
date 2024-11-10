@@ -1,4 +1,3 @@
-// internal/handlers/session.go
 package handlers
 
 import (
@@ -22,10 +21,10 @@ const (
 	sessionDuration = 24 * time.Hour
 )
 
-func CreateSession(userID uint) (string, error) {
+func CreateSession(userID string) (string, error) {
 	sessionID := generateSessionID()
 	ctx := context.Background()
-	err := database.RedisClient.Set(ctx, fmt.Sprintf("session:%s", sessionID), fmt.Sprintf("%d", userID), sessionDuration).Err()
+	err := database.RedisClient.Set(ctx, fmt.Sprintf("session:%s", sessionID), userID, sessionDuration).Err()
 	if err != nil {
 		return "", fmt.Errorf("failed to set session in Redis: %v", err)
 	}
@@ -38,16 +37,11 @@ func generateSessionID() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func getUserIDFromSession(sessionID string) (uint, error) {
+func getUserIDFromSession(sessionID string) (string, error) {
 	ctx := context.Background()
-	userIDStr, err := database.RedisClient.Get(ctx, fmt.Sprintf("session:%s", sessionID)).Result()
+	userID, err := database.RedisClient.Get(ctx, fmt.Sprintf("session:%s", sessionID)).Result()
 	if err != nil {
-		return 0, err
-	}
-	var userID uint
-	_, err = fmt.Sscanf(userIDStr, "%d", &userID)
-	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return userID, nil
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -13,36 +14,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDContextKey).(uint)
-	if !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	// Itt lehetne lekérni a felhasználó adatait és átadni a template-nek
-	tmpl, err := template.ParseFiles("web/templates/home.gohtml")
-	if err != nil {
-		log.Printf("Failed to parse home template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.Execute(w, map[string]interface{}{"UserID": userID})
-	if err != nil {
-		log.Printf("Failed to execute home template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-}
-
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 
+		// Get user ID from email
+		userID, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("email:%s", email)).Result()
+		if err != nil {
+			handleLoginError(w, "Invalid email or password")
+			return
+		}
+
 		// Get user from Redis
-		userJSON, err := database.RedisClient.Get(context.Background(), "user:"+email).Result()
+		userJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s", userID)).Result()
 		if err != nil {
 			handleLoginError(w, "Invalid email or password")
 			return
@@ -55,7 +40,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Get password hash from Redis
-		storedHash, err := database.RedisClient.Get(context.Background(), "user:"+email+":password").Result()
+		storedHash, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s:password", userID)).Result()
 		if err != nil {
 			handleLoginError(w, "Invalid email or password")
 			return
@@ -68,7 +53,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Create session
-		sessionID, err := CreateSession(user.ID)
+		sessionID, err := CreateSession(userID)
 		if err != nil {
 			log.Printf("Failed to create session: %v", err)
 			handleLoginError(w, "Error creating session")
@@ -91,24 +76,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderLoginPage(w, "")
-}
-
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	sessionID, err := r.Cookie("session_id")
-	if err == nil {
-		DeleteSession(sessionID.Value)
-	}
-
-	// Töröljük a session cookie-t
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_id",
-		Value:    "",
-		HttpOnly: true,
-		Path:     "/",
-		MaxAge:   -1,
-	})
-
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func handleLoginError(w http.ResponseWriter, message string) {
