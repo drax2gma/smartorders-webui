@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kezdőlap - SmartOrders</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Üdvözöljük a SmartOrders rendszerben!</h1>
+        <p>Felhasználói azonosító: {{.UserID}}</p>
+        <nav>
+            <ul class="nav">
+                <li class="nav-item"><a href="/order" class="nav-link">Rendelés leadása</a></li>
+                <li class="nav-item"><a href="/status" class="nav-link">Rendelések állapota</a></li>
+                <li class="nav-item"><a href="/balance" class="nav-link">Egyenleg</a></li>
+                <li class="nav-item"><a href="/message" class="nav-link">Üzenet küldése</a></li>
+                <li class="nav-item"><a href="/logout" class="nav-link">Kijelentkezés</a></li>
+            </ul>
+        </nav>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

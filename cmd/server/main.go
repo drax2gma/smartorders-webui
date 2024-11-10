@@ -15,13 +15,18 @@ func main() {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
+	if err := database.InitializeProducts(); err != nil {
+		log.Fatalf("Failed to initialize products: %v", err)
+	}
+
 	// Set up routes
-	http.HandleFunc("/", handlers.LoginHandler)
+	http.HandleFunc("/", handlers.SessionMiddleware(handlers.HomeHandler))
 	http.HandleFunc("/login", handlers.LoginHandler)
-	http.HandleFunc("/order", handlers.OrderHandler)
-	http.HandleFunc("/status", handlers.StatusHandler)
-	http.HandleFunc("/balance", handlers.BalanceHandler)
-	http.HandleFunc("/message", handlers.MessageHandler)
+	http.HandleFunc("/logout", handlers.LogoutHandler)
+	http.HandleFunc("/order", handlers.SessionMiddleware(handlers.OrderHandler))
+	http.HandleFunc("/status", handlers.SessionMiddleware(handlers.StatusHandler))
+	http.HandleFunc("/balance", handlers.SessionMiddleware(handlers.BalanceHandler))
+	http.HandleFunc("/message", handlers.SessionMiddleware(handlers.MessageHandler))
 	http.HandleFunc("/validate-email", handlers.ValidateEmailHandler)
 
 	// Serve static files

@@ -13,28 +13,43 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDContextKey).(uint)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Itt lehetne lekérni a felhasználó adatait és átadni a template-nek
+	tmpl, err := template.ParseFiles("web/templates/home.gohtml")
+	if err != nil {
+		log.Printf("Failed to parse home template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, map[string]interface{}{"UserID": userID})
+	if err != nil {
+		log.Printf("Failed to execute home template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 
-		if database.RedisClient == nil {
-			log.Println("Redis client is not initialized")
-			handleLoginError(w, "Internal server error")
-			return
-		}
-
 		// Get user from Redis
 		userJSON, err := database.RedisClient.Get(context.Background(), "user:"+email).Result()
 		if err != nil {
-			log.Printf("Error getting user from Redis: %v", err)
 			handleLoginError(w, "Invalid email or password")
 			return
 		}
 
 		var user models.User
 		if err := json.Unmarshal([]byte(userJSON), &user); err != nil {
-			log.Printf("Error unmarshaling user data: %v", err)
 			handleLoginError(w, "Error processing user data")
 			return
 		}
@@ -42,14 +57,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		// Get password hash from Redis
 		storedHash, err := database.RedisClient.Get(context.Background(), "user:"+email+":password").Result()
 		if err != nil {
-			log.Printf("Error getting password hash from Redis: %v", err)
 			handleLoginError(w, "Invalid email or password")
 			return
 		}
 
 		// Check password
 		if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)); err != nil {
-			log.Printf("Password mismatch for user %s", email)
 			handleLoginError(w, "Invalid email or password")
 			return
 		}
@@ -68,15 +81,34 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			Value:    sessionID,
 			HttpOnly: true,
 			Path:     "/",
+			MaxAge:   int(sessionDuration.Seconds()),
 		})
 
 		// Átirányítás
-		w.Header().Set("HX-Redirect", "/order")
+		w.Header().Set("HX-Redirect", "/")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
 	renderLoginPage(w, "")
+}
+
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	sessionID, err := r.Cookie("session_id")
+	if err == nil {
+		DeleteSession(sessionID.Value)
+	}
+
+	// Töröljük a session cookie-t
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		HttpOnly: true,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func handleLoginError(w http.ResponseWriter, message string) {
