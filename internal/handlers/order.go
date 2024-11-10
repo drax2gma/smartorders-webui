@@ -7,7 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
@@ -21,12 +21,10 @@ func OrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodPost {
-		// Handle order creation
 		handleOrderCreation(w, r, userID)
 		return
 	}
 
-	// Get products from Redis
 	productsJSON, err := database.RedisClient.Get(context.Background(), "products").Result()
 	if err != nil {
 		log.Printf("Failed to get products: %v", err)
@@ -57,14 +55,9 @@ func OrderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleOrderCreation(w http.ResponseWriter, r *http.Request, userID string) {
-	productID, err := strconv.ParseUint(r.FormValue("product_id"), 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid product ID", http.StatusBadRequest)
-		return
-	}
+	productID := r.FormValue("product_id")
 
-	// Get product from Redis
-	productJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("product:%d", productID)).Result()
+	productJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("product:%s", productID)).Result()
 	if err != nil {
 		log.Printf("Failed to get product: %v", err)
 		http.Error(w, "Product not found", http.StatusNotFound)
@@ -78,15 +71,15 @@ func handleOrderCreation(w http.ResponseWriter, r *http.Request, userID string) 
 		return
 	}
 
-	// Create order
 	order := models.Order{
+		ID:         models.GenerateOrderID(userID, productID),
 		UserID:     userID,
 		ProductID:  productID,
 		TotalPrice: product.Price,
 		Status:     "pending",
+		CreatedAt:  time.Now(),
 	}
 
-	// Save order to Redis
 	orderJSON, err := json.Marshal(order)
 	if err != nil {
 		log.Printf("Failed to marshal order: %v", err)
@@ -101,7 +94,6 @@ func handleOrderCreation(w http.ResponseWriter, r *http.Request, userID string) 
 		return
 	}
 
-	// Add order to user's order list
 	err = database.RedisClient.RPush(context.Background(), fmt.Sprintf("user:%s:orders", userID), order.ID).Err()
 	if err != nil {
 		log.Printf("Failed to add order to user's list: %v", err)

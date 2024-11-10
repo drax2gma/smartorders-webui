@@ -31,9 +31,9 @@ func InitializeProducts() error {
 
 	// Példa termékek
 	products := []models.Product{
-		{ID: 1, Name: "Laptop", Price: 999.99, Stock: 10},
-		{ID: 2, Name: "Smartphone", Price: 499.99, Stock: 20},
-		{ID: 3, Name: "Headphones", Price: 99.99, Stock: 50},
+		{ID: "1", Megnevezes: "Laptop", Parameterek: "16GB RAM, 512GB SSD", Price: 999.99, Stock: 10},
+		{ID: "2", Megnevezes: "Smartphone", Parameterek: "64GB Storage, Black", Price: 499.99, Stock: 20},
+		{ID: "3", Megnevezes: "Headphones", Parameterek: "Wireless, Noise Cancelling", Price: 99.99, Stock: 50},
 	}
 
 	// Termékek mentése egyenként
@@ -43,7 +43,7 @@ func InitializeProducts() error {
 			return err
 		}
 
-		err = RedisClient.Set(ctx, "product:"+strconv.FormatUint(uint64(product.ID), 10), productJSON, 0).Err()
+		err = RedisClient.Set(ctx, "product:"+product.ID, 10), productJSON, 0).Err()
 		if err != nil {
 			return err
 		}
