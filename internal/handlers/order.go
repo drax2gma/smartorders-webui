@@ -13,9 +13,8 @@ import (
 )
 
 func OrderHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(uint)
+	userID, ok := r.Context().Value(userIDContextKey).(uint)
 	if !ok {
-		log.Println("User ID not found in context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
