@@ -14,6 +14,41 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDContextKey).(string)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Get user from Redis
+	userJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s", userID)).Result()
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	var user models.User
+	if err := json.Unmarshal([]byte(userJSON), &user); err != nil {
+		http.Error(w, "Invalid user data", http.StatusInternalServerError)
+		return
+	}
+
+	tmpl, err := template.ParseFiles("web/templates/home.gohtml")
+	if err != nil {
+		log.Printf("Failed to parse template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, user)
+	if err != nil {
+		log.Printf("Failed to execute template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("email")
@@ -78,6 +113,24 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	renderLoginPage(w, "")
 }
 
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	sessionID, err := r.Cookie("session_id")
+	if err == nil {
+		DeleteSession(sessionID.Value)
+	}
+
+	// Töröljük a session cookie-t
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		HttpOnly: true,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
 func handleLoginError(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
@@ -99,6 +152,7 @@ func ValidateEmailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func isValidEmail(email string) bool {
-	// Egyszerű email validáció, a gyakorlatban használj robusztusabb megoldást
-	return regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`).MatchString(email)
+	// Egyszer egy regex-et kell létrehozni, azután újrahasználható
+	var validEmail = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+	return validEmail.MatchString(email)
 }
