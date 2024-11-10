@@ -1,4 +1,3 @@
-// cmd/server/main.go
 package main
 
 import (
@@ -13,10 +12,6 @@ func main() {
 	// Redis inicializálása
 	if err := database.InitRedis("localhost:6379"); err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
-	}
-
-	if err := database.InitializeProducts(); err != nil {
-		log.Fatalf("Failed to initialize products: %v", err)
 	}
 
 	// Set up routes

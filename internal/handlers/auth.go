@@ -152,7 +152,6 @@ func ValidateEmailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func isValidEmail(email string) bool {
-	// Egyszer egy regex-et kell létrehozni, azután újrahasználható
-	var validEmail = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
-	return validEmail.MatchString(email)
+	// Egyszerű email validáció, a gyakorlatban használj robusztusabb megoldást
+	return regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`).MatchString(email)
 }

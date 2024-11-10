@@ -3,21 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kezdőlap - SmartOrders</title>
+    <title>Főoldal - SmartOrders</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 56px; }
+        @media (min-width: 992px) { body { padding-top: 72px; } }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1>Üdvözöljük a SmartOrders rendszerben!</h1>
-        <nav>
-            <ul class="nav">
-                <li class="nav-item"><a href="/order" class="nav-link">Rendelés leadása</a></li>
-                <li class="nav-item"><a href="/status" class="nav-link">Rendelések állapota</a></li>
-                <li class="nav-item"><a href="/balance" class="nav-link">Egyenleg</a></li>
-                <li class="nav-item"><a href="/message" class="nav-link">Üzenet küldése</a></li>
-                <li class="nav-item"><a href="/logout" class="nav-link">Kijelentkezés</a></li>
-            </ul>
-        </nav>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">SmartOrders</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/order">Rendelés leadása</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/status">Rendelések állapota</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/balance">Egyenleg</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/message">Üzenet küldése</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/logout">Kijelentkezés</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1 class="mb-4">Üdvözöljük a SmartOrders rendszerben!</h1>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Gyors műveletek</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><a href="/order" class="btn btn-primary btn-sm">Új rendelés leadása</a></li>
+                            <li class="list-group-item"><a href="/status" class="btn btn-info btn-sm">Rendelések megtekintése</a></li>
+                            <li class="list-group-item"><a href="/balance" class="btn btn-success btn-sm">Egyenleg feltöltése</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Felhasználói adatok</h5>
+                        <p class="card-text">Név: {{.Name}}</p>
+                        <p class="card-text">Email: {{.Email}}</p>
+                        <p class="card-text">Egyenleg: {{.Balance}} Ft</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
