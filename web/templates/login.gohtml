@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bejelentkezés - SmartOrders</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-light">
+    <div class="container">
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h2 class="card-title text-center mb-4">Bejelentkezés</h2>
+                        <div id="alert-container"></div>
+                        <form id="login-form" hx-post="/login" hx-trigger="submit">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email cím</label>
+                                <input type="email" class="form-control" id="email" name="email" required
+                                       hx-post="/validate-email" hx-target="#email-error" hx-trigger="change">
+                                <div id="email-error" class="form-text text-danger"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Jelszó</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Bejelentkezés</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    function showAlert(message) {
+        const alertContainer = document.getElementById('alert-container');
+        // Töröljük a meglévő alerteket
+        alertContainer.innerHTML = '';
+        
+        const alertElement = document.createElement('div');
+        alertElement.className = 'alert alert-danger alert-dismissible fade show';
+        alertElement.innerHTML = `
+            <strong>${message}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        alertContainer.appendChild(alertElement);
+
+        // Alkalmazunk egy gyors fade out és fade in effektet
+        setTimeout(() => {
+            alertElement.style.transition = 'opacity 0.3s';
+            alertElement.style.opacity = '0';
+            setTimeout(() => {
+                alertElement.style.opacity = '1';
+            }, 300);
+        }, 100);
+    }
+
+    function handleLoginResponse(response) {
+        if (response.ok) {
+            // Átirányítás az orders oldalra
+            window.location.href = '/order';
+        } else {
+            // Hibaüzenet megjelenítése
+            showAlert('Hibás bejelentkezés!');
+        }
+    }
+
+    // HTMX eseménykezelők hozzáadása
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.elt.id === 'login-form') {
+            handleLoginResponse(evt.detail.xhr);
+        }
+    });
+    </script>
+
+</body>
+</html>
