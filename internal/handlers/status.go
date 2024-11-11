@@ -1,60 +1,70 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
+	"github.com/labstack/echo/v4"
 )
 
-func StatusHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDContextKey).(string)
+func StatusHandler(c echo.Context) error {
+	userID, ok := c.Get("user_id").(string)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
-	// Get user's order IDs from Redis
-	orderIDs, err := database.RedisClient.LRange(context.Background(), fmt.Sprintf("user:%s:orders", userID), 0, -1).Result()
+	// Fetch user's orders
+	rows, err := database.DB.Query(`
+        SELECT o.*, p.megnevezes, p.parameterek 
+        FROM orders o 
+        JOIN products p ON o.product_id = p.id 
+        WHERE o.user_id = ? 
+        ORDER BY o.created_at DESC`, userID)
 	if err != nil {
-		log.Printf("Failed to get order IDs: %v", err)
-		http.Error(w, "Failed to get orders", http.StatusInternalServerError)
-		return
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error fetching orders")
+	}
+	defer rows.Close()
+
+	type OrderWithProduct struct {
+		models.Order
+		ProductName   string
+		ProductParams string
 	}
 
-	var orders []models.Order
-	for _, orderID := range orderIDs {
-		orderJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("order:%s", orderID)).Result()
+	var orders []OrderWithProduct
+	for rows.Next() {
+		var o OrderWithProduct
+		err := rows.Scan(
+			&o.ID, &o.UserID, &o.ProductID, &o.TotalPrice, &o.Status, &o.CreatedAt,
+			&o.ProductName, &o.ProductParams,
+		)
 		if err != nil {
-			log.Printf("Failed to get order %s: %v", orderID, err)
-			continue
+			return echo.NewHTTPError(http.StatusInternalServerError, "Error scanning orders")
 		}
-
-		var order models.Order
-		if err := json.Unmarshal([]byte(orderJSON), &order); err != nil {
-			log.Printf("Failed to unmarshal order %s: %v", orderID, err)
-			continue
-		}
-
-		orders = append(orders, order)
+		orders = append(orders, o)
 	}
 
-	tmpl, err := template.ParseFiles("web/templates/status.gohtml")
+	// Get user data for the template
+	var user models.User
+	err = database.DB.QueryRow("SELECT * FROM users WHERE id = ?", userID).Scan(
+		&user.ID, &user.Name, &user.Email, &user.Password, &user.Balance, &user.CreatedAt, &user.UpdatedAt,
+	)
 	if err != nil {
-		log.Printf("Failed to parse template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error fetching user data")
 	}
 
-	err = tmpl.Execute(w, orders)
-	if err != nil {
-		log.Printf("Failed to execute template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	tmpl := template.Must(template.ParseFiles(
+		"web/templates/layout.html",
+		"web/templates/status.html",
+	))
+
+	data := TemplateData{
+		Title: "Rendelések állapota",
+		User:  &user,
+		Data:  orders,
 	}
+
+	return tmpl.Execute(c.Response().Writer, data)
 }

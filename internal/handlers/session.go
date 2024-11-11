@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -9,24 +8,20 @@ import (
 	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
+	"github.com/labstack/echo/v4"
 )
 
-type contextKey string
-
 const (
-	sessionContextKey contextKey = "session_id"
-	userIDContextKey  contextKey = "user_id"
-
 	sessionIDLength = 32
 	sessionDuration = 24 * time.Hour
 )
 
 func CreateSession(userID string) (string, error) {
 	sessionID := generateSessionID()
-	ctx := context.Background()
-	err := database.RedisClient.Set(ctx, fmt.Sprintf("session:%s", sessionID), userID, sessionDuration).Err()
+	_, err := database.DB.Exec("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)",
+		sessionID, userID, time.Now().Add(sessionDuration))
 	if err != nil {
-		return "", fmt.Errorf("failed to set session in Redis: %v", err)
+		return "", fmt.Errorf("failed to create session: %v", err)
 	}
 	return sessionID, nil
 }
@@ -37,35 +32,53 @@ func generateSessionID() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func getUserIDFromSession(sessionID string) (string, error) {
-	ctx := context.Background()
-	userID, err := database.RedisClient.Get(ctx, fmt.Sprintf("session:%s", sessionID)).Result()
-	if err != nil {
-		return "", err
-	}
-	return userID, nil
-}
+// func getUserIDFromSession(sessionID string) (string, error) {
+// 	var userID string
+// 	err := database.DB.QueryRow("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?", sessionID, time.Now()).Scan(&userID)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return userID, nil
+// }
 
 func DeleteSession(sessionID string) error {
-	ctx := context.Background()
-	return database.RedisClient.Del(ctx, "session:"+sessionID).Err()
+	_, err := database.DB.Exec("DELETE FROM sessions WHERE id = ?", sessionID)
+	return err
 }
 
-func SessionMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		sessionID, err := r.Cookie("session_id")
+func SessionMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		cookie, err := c.Cookie("session_id")
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
+			return c.Redirect(http.StatusSeeOther, "/login")
 		}
 
-		userID, err := getUserIDFromSession(sessionID.Value)
+		var userID string
+		err = database.DB.QueryRow(
+			"SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?",
+			cookie.Value, time.Now(),
+		).Scan(&userID)
+
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
+			// Ha lejárt vagy érvénytelen a session, töröljük
+			database.DB.Exec("DELETE FROM sessions WHERE id = ?", cookie.Value)
+			c.SetCookie(&http.Cookie{
+				Name:     "session_id",
+				Value:    "",
+				HttpOnly: true,
+				Path:     "/",
+				MaxAge:   -1,
+			})
+			return c.Redirect(http.StatusSeeOther, "/login")
 		}
 
-		ctx := context.WithValue(r.Context(), userIDContextKey, userID)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		// Session érvényes, frissítsük a lejárati időt
+		database.DB.Exec(
+			"UPDATE sessions SET expires_at = ? WHERE id = ?",
+			time.Now().Add(24*time.Hour), cookie.Value,
+		)
+
+		c.Set("user_id", userID)
+		return next(c)
 	}
 }

@@ -1,0 +1,38 @@
+{{ define "content" }}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <h2 class="mb-4">Egyenleg kezelése</h2>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Jelenlegi egyenleg</h5>
+                <p class="card-text h3 text-success">{{ printf "%.2f" .Balance }} Ft</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Egyenleg feltöltése</h5>
+                <form hx-post="/balance" hx-target="#balanceResult">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Összeg (Ft)</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="amount" 
+                               name="amount" 
+                               min="0" 
+                               step="100" 
+                               required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100">
+                        Feltöltés
+                    </button>
+                </form>
+                
+                <div id="balanceResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

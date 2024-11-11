@@ -2,35 +2,54 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/handlers"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
-	// Redis inicializálása
-	if err := database.InitRedis("localhost:6379"); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+	// Initialize database
+	if err := database.InitDB(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
+	defer database.CloseDB()
 
-	// Set up routes
-	http.HandleFunc("/", handlers.SessionMiddleware(handlers.HomeHandler))
-	http.HandleFunc("/login", handlers.LoginHandler)
-	http.HandleFunc("/logout", handlers.LogoutHandler)
-	http.HandleFunc("/order", handlers.SessionMiddleware(handlers.OrderHandler))
-	http.HandleFunc("/status", handlers.SessionMiddleware(handlers.StatusHandler))
-	http.HandleFunc("/balance", handlers.SessionMiddleware(handlers.BalanceHandler))
-	http.HandleFunc("/message", handlers.SessionMiddleware(handlers.MessageHandler))
-	http.HandleFunc("/validate-email", handlers.ValidateEmailHandler)
+	// Create Echo instance
+	e := echo.New()
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	// Auth routes (no session required)
+	e.GET("/login", handlers.LoginPageHandler)
+	e.POST("/login", handlers.LoginHandler)
+	e.POST("/validate-email", handlers.ValidateEmailHandler)
+
+	// Protected routes (session required)
+	protected := e.Group("")
+	protected.Use(handlers.SessionMiddleware)
+
+	protected.GET("/", handlers.HomeHandler)
+	protected.GET("/logout", handlers.LogoutHandler)
+
+	protected.GET("/order", handlers.OrderHandler)
+	protected.POST("/order", handlers.OrderHandler)
+
+	protected.GET("/status", handlers.StatusHandler)
+
+	protected.GET("/balance", handlers.BalanceHandler)
+	protected.POST("/balance", handlers.BalanceHandler)
+
+	protected.GET("/message", handlers.MessageHandler)
+	protected.POST("/message", handlers.MessageHandler)
 
 	// Serve static files
-	fs := http.FileServer(http.Dir("./web/static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	e.Static("/static", "web/static")
 
-	// Start the server
+	// Start server
 	log.Println("Server starting on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
-	}
+	e.Logger.Fatal(e.Start(":8080"))
 }

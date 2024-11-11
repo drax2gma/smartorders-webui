@@ -1,0 +1,40 @@
+{{ define "content" }}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">Rendelések állapota</h2>
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Azonosító</th>
+                                <th>Termék</th>
+                                <th>Összeg</th>
+                                <th>Státusz</th>
+                                <th>Dátum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .Orders }}
+                            <tr>
+                                <td>{{ .ID }}</td>
+                                <td>{{ .ProductID }}</td>
+                                <td>{{ printf "%.2f" .TotalPrice }} Ft</td>
+                                <td>
+                                    <span class="badge {{ if eq .Status "pending" }}bg-warning{{ else if eq .Status "completed" }}bg-success{{ else }}bg-secondary{{ end }}">
+                                        {{ .Status }}
+                                    </span>
+                                </td>
+                                <td>{{ .CreatedAt.Format "2006-01-02 15:04:05" }}</td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

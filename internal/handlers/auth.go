@@ -1,126 +1,129 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
+	"database/sql"
 	"html/template"
 	"log"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
+	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDContextKey).(string)
-	if !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
+type TemplateData struct {
+	Title string
+	User  *models.User
+	Data  interface{}
+}
 
-	// Get user from Redis
-	userJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s", userID)).Result()
-	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
+func HomeHandler(c echo.Context) error {
+	userID, ok := c.Get("user_id").(string)
+	if !ok {
+		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
 	var user models.User
-	if err := json.Unmarshal([]byte(userJSON), &user); err != nil {
-		http.Error(w, "Invalid user data", http.StatusInternalServerError)
-		return
+	err := database.DB.QueryRow("SELECT * FROM users WHERE id = ?", userID).Scan(
+		&user.ID, &user.Name, &user.Email, &user.Password, &user.Balance, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.Redirect(http.StatusSeeOther, "/login")
+		}
+		return c.String(http.StatusInternalServerError, "Error fetching user data")
 	}
 
-	tmpl, err := template.ParseFiles("web/templates/home.gohtml")
-	if err != nil {
-		log.Printf("Failed to parse template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	tmpl := template.Must(template.ParseFiles(
+		"web/templates/layout.html",
+		"web/templates/home.html",
+	))
+
+	data := TemplateData{
+		Title: "Főoldal",
+		User:  &user,
 	}
 
-	err = tmpl.Execute(w, user)
-	if err != nil {
-		log.Printf("Failed to execute template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	return tmpl.Execute(c.Response().Writer, data)
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		email := r.FormValue("email")
-		password := r.FormValue("password")
+func LoginPageHandler(c echo.Context) error {
+	tmpl := template.Must(template.ParseFiles(
+		"web/templates/layout.html",
+		"web/templates/login.html",
+	))
 
-		// Get user ID from email
-		userID, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("email:%s", email)).Result()
-		if err != nil {
-			handleLoginError(w, "Invalid email or password")
-			return
-		}
-
-		// Get user from Redis
-		userJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s", userID)).Result()
-		if err != nil {
-			handleLoginError(w, "Invalid email or password")
-			return
-		}
-
-		var user models.User
-		if err := json.Unmarshal([]byte(userJSON), &user); err != nil {
-			handleLoginError(w, "Error processing user data")
-			return
-		}
-
-		// Get password hash from Redis
-		storedHash, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s:password", userID)).Result()
-		if err != nil {
-			handleLoginError(w, "Invalid email or password")
-			return
-		}
-
-		// Check password
-		if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)); err != nil {
-			handleLoginError(w, "Invalid email or password")
-			return
-		}
-
-		// Create session
-		sessionID, err := CreateSession(userID)
-		if err != nil {
-			log.Printf("Failed to create session: %v", err)
-			handleLoginError(w, "Error creating session")
-			return
-		}
-
-		// Set session cookie
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    sessionID,
-			HttpOnly: true,
-			Path:     "/",
-			MaxAge:   int(sessionDuration.Seconds()),
-		})
-
-		// Átirányítás
-		w.Header().Set("HX-Redirect", "/")
-		w.WriteHeader(http.StatusOK)
-		return
+	data := TemplateData{
+		Title: "Bejelentkezés",
 	}
 
-	renderLoginPage(w, "")
+	return tmpl.Execute(c.Response().Writer, data)
 }
 
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	sessionID, err := r.Cookie("session_id")
+func LoginHandler(c echo.Context) error {
+	email := c.FormValue("email")
+	password := c.FormValue("password")
+
+	var user models.User
+	var hashedPassword string
+	err := database.DB.QueryRow("SELECT id, password FROM users WHERE email = ?", email).Scan(&user.ID, &hashedPassword)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.HTML(http.StatusUnauthorized, `
+                <div id="loginResult" class="alert alert-danger">
+                    Hibás email cím vagy jelszó!
+                </div>
+            `)
+		}
+		log.Printf("Database error during login: %v", err)
+		return c.HTML(http.StatusInternalServerError, `
+            <div id="loginResult" class="alert alert-danger">
+                Belső szerverhiba történt, kérjük próbálja újra később.
+            </div>
+        `)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		return c.HTML(http.StatusUnauthorized, `
+            <div id="loginResult" class="alert alert-danger">
+                Hibás email cím vagy jelszó!
+            </div>
+        `)
+	}
+
+	sessionID, err := CreateSession(user.ID)
+	if err != nil {
+		log.Printf("Error creating session: %v", err)
+		return c.HTML(http.StatusInternalServerError, `
+            <div id="loginResult" class="alert alert-danger">
+                Hiba történt a bejelentkezés során, kérjük próbálja újra később.
+            </div>
+        `)
+	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     "session_id",
+		Value:    sessionID,
+		HttpOnly: true,
+		Path:     "/",
+		MaxAge:   int(sessionDuration.Seconds()),
+	})
+
+	// HTMX átirányítás
+	c.Response().Header().Set("HX-Redirect", "/")
+	return c.String(http.StatusOK, "")
+}
+
+func LogoutHandler(c echo.Context) error {
+	cookie, err := c.Cookie("session_id")
 	if err == nil {
-		DeleteSession(sessionID.Value)
+		DeleteSession(cookie.Value)
 	}
 
-	// Töröljük a session cookie-t
-	http.SetCookie(w, &http.Cookie{
+	c.SetCookie(&http.Cookie{
 		Name:     "session_id",
 		Value:    "",
 		HttpOnly: true,
@@ -128,30 +131,45 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	return c.Redirect(http.StatusSeeOther, "/login")
 }
 
-func handleLoginError(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	json.NewEncoder(w).Encode(map[string]string{"error": message})
-}
-
-func renderLoginPage(w http.ResponseWriter, errorMessage string) {
-	tmpl, _ := template.ParseFiles("web/templates/login.gohtml")
-	tmpl.Execute(w, map[string]string{"ErrorMessage": errorMessage})
-}
-
-func ValidateEmailHandler(w http.ResponseWriter, r *http.Request) {
-	email := r.FormValue("email")
+func ValidateEmailHandler(c echo.Context) error {
+	email := c.FormValue("email")
 	if !isValidEmail(email) {
-		w.Write([]byte("Érvénytelen email cím"))
-		return
+		return c.HTML(http.StatusOK, `
+            <div class="alert alert-danger">
+                Érvénytelen email cím formátum!
+            </div>
+        `)
 	}
-	w.Write([]byte(""))
+
+	// Ellenőrizzük, hogy az email cím már regisztrálva van-e
+	var exists bool
+	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)", email).Scan(&exists)
+	if err != nil {
+		return c.HTML(http.StatusInternalServerError, `
+            <div class="alert alert-danger">
+                Hiba történt az email cím ellenőrzése során.
+            </div>
+        `)
+	}
+
+	if exists {
+		return c.HTML(http.StatusOK, `
+            <div class="alert alert-warning">
+                Ez az email cím már regisztrálva van!
+            </div>
+        `)
+	}
+
+	return c.HTML(http.StatusOK, "")
 }
 
+// isValidEmail ellenőrzi az email cím formátumát
 func isValidEmail(email string) bool {
-	// Egyszerű email validáció, a gyakorlatban használj robusztusabb megoldást
-	return regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`).MatchString(email)
+	// Egyszerű email validáció
+	email = strings.TrimSpace(email)
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	return emailRegex.MatchString(email)
 }

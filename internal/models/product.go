@@ -1,8 +1,7 @@
 package models
 
 import (
-	"fmt"
-	"hash/fnv"
+	"github.com/drax2gma/smartorders-webui/internal/utils"
 )
 
 type Product struct {
@@ -14,12 +13,6 @@ type Product struct {
 }
 
 func GenerateProductID(megnevezes, parameterek string) string {
-	return xxh32(megnevezes + "|" + parameterek)
-}
-
-// xxh32 implementálja az xxh32 hash algoritmust
-func xxh32(input string) string {
-	h := fnv.New32a()
-	h.Write([]byte(input))
-	return fmt.Sprintf("%08x", h.Sum32())
+	input := megnevezes + "|" + parameterek
+	return utils.GenerateXXH64Hash(input)
 }

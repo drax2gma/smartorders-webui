@@ -1,0 +1,25 @@
+{{ define "content" }}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Üdvözöljük, {{ .User.Name }}!</h5>
+                <p class="card-text">Email: {{ .User.Email }}</p>
+                <p class="card-text">Egyenleg: {{ printf "%.2f" .User.Balance }} Ft</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Gyors műveletek</h5>
+                <div class="list-group">
+                    <a href="/order" class="list-group-item list-group-item-action">Új rendelés leadása</a>
+                    <a href="/status" class="list-group-item list-group-item-action">Rendelések megtekintése</a>
+                    <a href="/balance" class="list-group-item list-group-item-action">Egyenleg feltöltése</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
