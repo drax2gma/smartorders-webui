@@ -39,8 +39,8 @@ func createTables() error {
 
 	productTable := `CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
-        megnevezes TEXT,
-        parameterek TEXT,
+        description TEXT,
+        params TEXT,
         price REAL,
         stock INTEGER
     )`

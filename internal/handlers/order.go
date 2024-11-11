@@ -30,7 +30,7 @@ func OrderHandler(c echo.Context) error {
 	var products []models.Product
 	for rows.Next() {
 		var p models.Product
-		err := rows.Scan(&p.ID, &p.Megnevezes, &p.Parameterek, &p.Price, &p.Stock)
+		err := rows.Scan(&p.ID, &p.Description, &p.Params, &p.Price, &p.Stock)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Error scanning products")
 		}
@@ -58,7 +58,7 @@ func handleOrderSubmission(c echo.Context, userID string) error {
 	// Get product details
 	var product models.Product
 	err := database.DB.QueryRow("SELECT * FROM products WHERE id = ?", productID).Scan(
-		&product.ID, &product.Megnevezes, &product.Parameterek, &product.Price, &product.Stock,
+		&product.ID, &product.Description, &product.Params, &product.Price, &product.Stock,
 	)
 	if err != nil {
 		return c.HTML(http.StatusBadRequest, `

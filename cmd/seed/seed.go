@@ -51,22 +51,22 @@ func seedUsers() {
 
 func seedProducts() {
 	products := []models.Product{
-		{Megnevezes: "Laptop", Parameterek: "16GB RAM, 512GB SSD", Price: 999.99, Stock: 10},
-		{Megnevezes: "Smartphone", Parameterek: "64GB Storage, Black", Price: 499.99, Stock: 20},
-		{Megnevezes: "Headphones", Parameterek: "Wireless, Noise Cancelling", Price: 99.99, Stock: 50},
-		{Megnevezes: "Tablet", Parameterek: "10 inch, Wi-Fi", Price: 299.99, Stock: 15},
-		{Megnevezes: "Smartwatch", Parameterek: "Heart Rate Monitor, GPS", Price: 199.99, Stock: 30},
+		{Description: "Laptop", Params: "16GB RAM, 512GB SSD", Price: 999.99, Stock: 10},
+		{Description: "Smartphone", Params: "64GB Storage, Black", Price: 499.99, Stock: 20},
+		{Description: "Headphones", Params: "Wireless, Noise Cancelling", Price: 99.99, Stock: 50},
+		{Description: "Tablet", Params: "10 inch, Wi-Fi", Price: 299.99, Stock: 15},
+		{Description: "Smartwatch", Params: "Heart Rate Monitor, GPS", Price: 199.99, Stock: 30},
 	}
 
 	for _, product := range products {
-		product.ID = models.GenerateProductID(product.Megnevezes, product.Parameterek)
+		product.ID = models.GenerateProductID(product.Description, product.Params)
 		_, err := database.DB.Exec(`
-            INSERT INTO products (id, megnevezes, parameterek, price, stock)
+            INSERT INTO products (id, description, params, price, stock)
             VALUES (?, ?, ?, ?, ?)
-        `, product.ID, product.Megnevezes, product.Parameterek, product.Price, product.Stock)
+        `, product.ID, product.Description, product.Params, product.Price, product.Stock)
 
 		if err != nil {
-			log.Printf("Error seeding product %s: %v\n", product.Megnevezes, err)
+			log.Printf("Error seeding product %s: %v\n", product.Description, err)
 		}
 	}
 }

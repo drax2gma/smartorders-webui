@@ -17,7 +17,7 @@ func StatusHandler(c echo.Context) error {
 
 	// Fetch user's orders
 	rows, err := database.DB.Query(`
-        SELECT o.*, p.megnevezes, p.parameterek 
+        SELECT o.*, p.description, p.params 
         FROM orders o 
         JOIN products p ON o.product_id = p.id 
         WHERE o.user_id = ? 

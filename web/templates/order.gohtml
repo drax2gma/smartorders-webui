@@ -10,7 +10,7 @@
                         <label for="product" class="form-label">Válassz terméket</label>
                         <select class="form-select" id="product" name="product_id" required>
                             {{ range .Products }}
-                            <option value="{{ .ID }}">{{ .Megnevezes }} - {{ .Parameterek }} ({{ printf "%.2f" .Price }} Ft)</option>
+                            <option value="{{ .ID }}">{{ .Description }} - {{ .Params }} ({{ printf "%.2f" .Price }} Ft)</option>
                             {{ end }}
                         </select>
                     </div>
