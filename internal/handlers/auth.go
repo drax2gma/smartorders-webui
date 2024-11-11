@@ -38,8 +38,8 @@ func HomeHandler(c echo.Context) error {
 	}
 
 	tmpl := template.Must(template.ParseFiles(
-		"web/templates/layout.html",
-		"web/templates/home.html",
+		"web/templates/layout.gohtml",
+		"web/templates/home.gohtml",
 	))
 
 	data := TemplateData{
@@ -52,8 +52,8 @@ func HomeHandler(c echo.Context) error {
 
 func LoginPageHandler(c echo.Context) error {
 	tmpl := template.Must(template.ParseFiles(
-		"web/templates/layout.html",
-		"web/templates/login.html",
+		"web/templates/layout.gohtml",
+		"web/templates/login.gohtml",
 	))
 
 	data := TemplateData{

@@ -56,8 +56,8 @@ func StatusHandler(c echo.Context) error {
 	}
 
 	tmpl := template.Must(template.ParseFiles(
-		"web/templates/layout.html",
-		"web/templates/status.html",
+		"web/templates/layout.gohtml",
+		"web/templates/status.gohtml",
 	))
 
 	data := TemplateData{

@@ -30,8 +30,8 @@ func MessageHandler(c echo.Context) error {
 	}
 
 	tmpl := template.Must(template.ParseFiles(
-		"web/templates/layout.html",
-		"web/templates/message.html",
+		"web/templates/layout.gohtml",
+		"web/templates/message.gohtml",
 	))
 
 	data := TemplateData{

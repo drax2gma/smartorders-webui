@@ -38,8 +38,8 @@ func OrderHandler(c echo.Context) error {
 	}
 
 	tmpl := template.Must(template.ParseFiles(
-		"web/templates/layout.html",
-		"web/templates/order.html",
+		"web/templates/layout.gohtml",
+		"web/templates/order.gohtml",
 	))
 
 	data := TemplateData{

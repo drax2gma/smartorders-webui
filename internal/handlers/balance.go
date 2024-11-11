@@ -29,8 +29,8 @@ func BalanceHandler(c echo.Context) error {
 	}
 
 	tmpl := template.Must(template.ParseFiles(
-		"web/templates/layout.html",
-		"web/templates/balance.html",
+		"web/templates/layout.gohtml",
+		"web/templates/balance.gohtml",
 	))
 
 	data := TemplateData{
