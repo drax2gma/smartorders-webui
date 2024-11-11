@@ -32,14 +32,14 @@ func generateSessionID() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func getUserIDFromSession(sessionID string) (string, error) {
-	var userID string
-	err := database.DB.QueryRow("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?", sessionID, time.Now()).Scan(&userID)
-	if err != nil {
-		return "", err
-	}
-	return userID, nil
-}
+// func getUserIDFromSession(sessionID string) (string, error) {
+// 	var userID string
+// 	err := database.DB.QueryRow("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?", sessionID, time.Now()).Scan(&userID)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return userID, nil
+// }
 
 func DeleteSession(sessionID string) error {
 	_, err := database.DB.Exec("DELETE FROM sessions WHERE id = ?", sessionID)
@@ -49,16 +49,35 @@ func DeleteSession(sessionID string) error {
 func SessionMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cookie, err := c.Cookie("session_id")
-		if err != nil || cookie.Value == "" {
+		if err != nil {
 			return c.Redirect(http.StatusSeeOther, "/login")
 		}
 
-		userID, err := getUserIDFromSession(cookie.Value)
-		if err != nil || userID == "" {
+		var userID string
+		err = database.DB.QueryRow(
+			"SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?",
+			cookie.Value, time.Now(),
+		).Scan(&userID)
+
+		if err != nil {
+			// Ha lejárt vagy érvénytelen a session, töröljük
+			database.DB.Exec("DELETE FROM sessions WHERE id = ?", cookie.Value)
+			c.SetCookie(&http.Cookie{
+				Name:     "session_id",
+				Value:    "",
+				HttpOnly: true,
+				Path:     "/",
+				MaxAge:   -1,
+			})
 			return c.Redirect(http.StatusSeeOther, "/login")
 		}
 
-		// Set the user ID in the context for later use
+		// Session érvényes, frissítsük a lejárati időt
+		database.DB.Exec(
+			"UPDATE sessions SET expires_at = ? WHERE id = ?",
+			time.Now().Add(24*time.Hour), cookie.Value,
+		)
+
 		c.Set("user_id", userID)
 		return next(c)
 	}

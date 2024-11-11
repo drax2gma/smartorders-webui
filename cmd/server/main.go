@@ -23,23 +23,33 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// Routes
-	e.GET("/", handlers.SessionMiddleware(handlers.HomeHandler))
+	// Auth routes (no session required)
 	e.GET("/login", handlers.LoginPageHandler)
 	e.POST("/login", handlers.LoginHandler)
-	e.GET("/logout", handlers.LogoutHandler)
-	e.GET("/order", handlers.OrderHandler)
-	e.POST("/order", handlers.OrderHandler)
-	e.GET("/status", handlers.StatusHandler)
-	e.GET("/balance", handlers.BalanceHandler)
-	e.POST("/balance", handlers.BalanceHandler)
-	e.GET("/message", handlers.MessageHandler)
-	e.POST("/message", handlers.MessageHandler)
 	e.POST("/validate-email", handlers.ValidateEmailHandler)
+
+	// Protected routes (session required)
+	protected := e.Group("")
+	protected.Use(handlers.SessionMiddleware)
+
+	protected.GET("/", handlers.HomeHandler)
+	protected.GET("/logout", handlers.LogoutHandler)
+
+	protected.GET("/order", handlers.OrderHandler)
+	protected.POST("/order", handlers.OrderHandler)
+
+	protected.GET("/status", handlers.StatusHandler)
+
+	protected.GET("/balance", handlers.BalanceHandler)
+	protected.POST("/balance", handlers.BalanceHandler)
+
+	protected.GET("/message", handlers.MessageHandler)
+	protected.POST("/message", handlers.MessageHandler)
 
 	// Serve static files
 	e.Static("/static", "web/static")
 
 	// Start server
+	log.Println("Server starting on :8080")
 	e.Logger.Fatal(e.Start(":8080"))
 }

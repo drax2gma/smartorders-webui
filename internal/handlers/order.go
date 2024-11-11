@@ -1,29 +1,29 @@
 package handlers
 
 import (
+	"html/template"
 	"net/http"
 	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
-	"github.com/drax2gma/smartorders-webui/web/templates"
 	"github.com/labstack/echo/v4"
 )
 
 func OrderHandler(c echo.Context) error {
-	userID := c.Get("user_id")
-	if userID == nil {
+	userID, ok := c.Get("user_id").(string)
+	if !ok {
 		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
 	if c.Request().Method == http.MethodPost {
-		return handleOrderCreation(c)
+		return handleOrderSubmission(c, userID)
 	}
 
-	// Fetch products from database
+	// Fetch products
 	rows, err := database.DB.Query("SELECT * FROM products")
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "Error fetching products")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error fetching products")
 	}
 	defer rows.Close()
 
@@ -32,43 +32,60 @@ func OrderHandler(c echo.Context) error {
 		var p models.Product
 		err := rows.Scan(&p.ID, &p.Megnevezes, &p.Parameterek, &p.Price, &p.Stock)
 		if err != nil {
-			return c.String(http.StatusInternalServerError, "Error scanning products")
+			return echo.NewHTTPError(http.StatusInternalServerError, "Error scanning products")
 		}
 		products = append(products, p)
 	}
 
-	return templates.Order(products).Render(c.Request().Context(), c.Response().Writer)
+	tmpl := template.Must(template.ParseFiles(
+		"web/templates/layout.html",
+		"web/templates/order.html",
+	))
+
+	data := TemplateData{
+		Title: "Rendelés",
+		Data: map[string]interface{}{
+			"Products": products,
+		},
+	}
+
+	return tmpl.Execute(c.Response().Writer, data)
 }
 
-func handleOrderCreation(c echo.Context) error {
-	userID := c.Get("user_id").(string)
+func handleOrderSubmission(c echo.Context, userID string) error {
 	productID := c.FormValue("product_id")
 
-	// Fetch product details
+	// Get product details
 	var product models.Product
 	err := database.DB.QueryRow("SELECT * FROM products WHERE id = ?", productID).Scan(
 		&product.ID, &product.Megnevezes, &product.Parameterek, &product.Price, &product.Stock,
 	)
 	if err != nil {
-		return c.String(http.StatusNotFound, "Product not found")
+		return c.HTML(http.StatusBadRequest, `
+            <div class="alert alert-danger">
+                A kiválasztott termék nem található.
+            </div>
+        `)
 	}
 
 	// Create order
-	order := models.Order{
-		ID:         models.GenerateOrderID(userID, productID, time.Now()),
-		UserID:     userID,
-		ProductID:  productID,
-		TotalPrice: product.Price,
-		Status:     "pending",
-	}
-
+	orderID := models.GenerateOrderID(userID, productID, time.Now())
 	_, err = database.DB.Exec(`
         INSERT INTO orders (id, user_id, product_id, total_price, status, created_at)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `, order.ID, order.UserID, order.ProductID, order.TotalPrice, order.Status)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, orderID, userID, productID, product.Price, "pending", time.Now())
+
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "Error creating order")
+		return c.HTML(http.StatusInternalServerError, `
+            <div class="alert alert-danger">
+                Hiba történt a rendelés feldolgozása során.
+            </div>
+        `)
 	}
 
-	return c.HTML(http.StatusOK, "<p>Rendelés sikeresen leadva!</p>")
+	return c.HTML(http.StatusOK, `
+        <div class="alert alert-success">
+            A rendelés sikeresen leadva!
+        </div>
+    `)
 }

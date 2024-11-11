@@ -1,0 +1,29 @@
+{{ define "content" }}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Bejelentkezés</h2>
+                
+                <form hx-post="/login" hx-target="#loginResult" hx-swap="outerHTML">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email cím</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Jelszó</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+
+                    <div id="loginResult"></div>
+
+                    <button type="submit" class="btn btn-success w-100">
+                        Bejelentkezés
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
