@@ -2,35 +2,44 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/handlers"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
-	// Redis inicializálása
-	if err := database.InitRedis("localhost:6379"); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+	// Initialize database
+	if err := database.InitDB(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
+	defer database.CloseDB()
 
-	// Set up routes
-	http.HandleFunc("/", handlers.SessionMiddleware(handlers.HomeHandler))
-	http.HandleFunc("/login", handlers.LoginHandler)
-	http.HandleFunc("/logout", handlers.LogoutHandler)
-	http.HandleFunc("/order", handlers.SessionMiddleware(handlers.OrderHandler))
-	http.HandleFunc("/status", handlers.SessionMiddleware(handlers.StatusHandler))
-	http.HandleFunc("/balance", handlers.SessionMiddleware(handlers.BalanceHandler))
-	http.HandleFunc("/message", handlers.SessionMiddleware(handlers.MessageHandler))
-	http.HandleFunc("/validate-email", handlers.ValidateEmailHandler)
+	// Create Echo instance
+	e := echo.New()
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	// Routes
+	e.GET("/", handlers.HomeHandler)
+	e.GET("/login", handlers.LoginPageHandler)
+	e.POST("/login", handlers.LoginHandler)
+	e.GET("/logout", handlers.LogoutHandler)
+	e.GET("/order", handlers.OrderHandler)
+	e.POST("/order", handlers.OrderHandler)
+	e.GET("/status", handlers.StatusHandler)
+	e.GET("/balance", handlers.BalanceHandler)
+	e.POST("/balance", handlers.BalanceHandler)
+	e.GET("/message", handlers.MessageHandler)
+	e.POST("/message", handlers.MessageHandler)
+	e.POST("/validate-email", handlers.ValidateEmailHandler)
 
 	// Serve static files
-	fs := http.FileServer(http.Dir("./web/static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	e.Static("/static", "web/static")
 
-	// Start the server
-	log.Println("Server starting on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
-	}
+	// Start server
+	e.Logger.Fatal(e.Start(":8080"))
 }

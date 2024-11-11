@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -13,26 +11,26 @@ import (
 )
 
 func main() {
-	if err := database.InitRedis("localhost:6379"); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+	err := database.InitDB()
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
+	defer database.CloseDB()
 
 	seedUsers()
 	seedProducts()
 
-	fmt.Println("Seeding completed successfully!")
+	log.Println("Seeding completed successfully!")
 }
 
 func seedUsers() {
-	ctx := context.Background()
-
-	for i := 0; i < 20; i++ {
-		email := fmt.Sprintf("user%d@example.com", i+1)
-		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(fmt.Sprintf("password%d", i+1)), bcrypt.DefaultCost)
+	for i := 1; i <= 20; i++ {
+		email := fmt.Sprintf("user%d@example.com", i)
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(fmt.Sprintf("password%d", i)), bcrypt.DefaultCost)
 
 		user := models.User{
 			ID:        models.GenerateUserID(email),
-			Name:      fmt.Sprintf("Felhasználó %d", i+1),
+			Name:      fmt.Sprintf("Felhasználó %d", i),
 			Email:     email,
 			Password:  string(hashedPassword),
 			Balance:   0,
@@ -40,26 +38,18 @@ func seedUsers() {
 			UpdatedAt: time.Now(),
 		}
 
-		jsonUser, _ := json.Marshal(user)
-		err := database.RedisClient.Set(ctx, fmt.Sprintf("user:%s", user.ID), jsonUser, 0).Err()
+		_, err := database.DB.Exec(`
+            INSERT INTO users (id, name, email, password, balance, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, user.ID, user.Name, user.Email, user.Password, user.Balance, user.CreatedAt, user.UpdatedAt)
+
 		if err != nil {
 			log.Printf("Error seeding user %s: %v\n", user.Email, err)
-		}
-
-		err = database.RedisClient.Set(ctx, fmt.Sprintf("email:%s", user.Email), user.ID, 0).Err()
-		if err != nil {
-			log.Printf("Error storing email mapping for %s: %v\n", user.Email, err)
-		}
-
-		err = database.RedisClient.Set(ctx, fmt.Sprintf("user:%s:password", user.ID), user.Password, 0).Err()
-		if err != nil {
-			log.Printf("Error storing password for user %s: %v\n", user.Email, err)
 		}
 	}
 }
 
 func seedProducts() {
-	ctx := context.Background()
 	products := []models.Product{
 		{Megnevezes: "Laptop", Parameterek: "16GB RAM, 512GB SSD", Price: 999.99, Stock: 10},
 		{Megnevezes: "Smartphone", Parameterek: "64GB Storage, Black", Price: 499.99, Stock: 20},
@@ -68,27 +58,15 @@ func seedProducts() {
 		{Megnevezes: "Smartwatch", Parameterek: "Heart Rate Monitor, GPS", Price: 199.99, Stock: 30},
 	}
 
-	for i := range products {
-		products[i].ID = models.GenerateProductID(products[i].Megnevezes, products[i].Parameterek)
-		jsonProduct, err := json.Marshal(products[i])
-		if err != nil {
-			log.Printf("Error marshaling product %s: %v\n", products[i].Megnevezes, err)
-			continue
-		}
+	for _, product := range products {
+		product.ID = models.GenerateProductID(product.Megnevezes, product.Parameterek)
+		_, err := database.DB.Exec(`
+            INSERT INTO products (id, megnevezes, parameterek, price, stock)
+            VALUES (?, ?, ?, ?, ?)
+        `, product.ID, product.Megnevezes, product.Parameterek, product.Price, product.Stock)
 
-		err = database.RedisClient.Set(ctx, fmt.Sprintf("product:%s", products[i].ID), jsonProduct, 0).Err()
 		if err != nil {
-			log.Printf("Error seeding product %s: %v\n", products[i].Megnevezes, err)
-		}
-	}
-
-	allProductsJSON, err := json.Marshal(products)
-	if err != nil {
-		log.Printf("Error marshaling all products: %v\n", err)
-	} else {
-		err = database.RedisClient.Set(ctx, "products", allProductsJSON, 0).Err()
-		if err != nil {
-			log.Printf("Error storing all products: %v\n", err)
+			log.Printf("Error seeding product %s: %v\n", product.Megnevezes, err)
 		}
 	}
 }

@@ -1,86 +1,51 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"html/template"
-	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
-	"github.com/drax2gma/smartorders-webui/internal/models"
+	"github.com/drax2gma/smartorders-webui/web/templates"
+	"github.com/labstack/echo/v4"
 )
 
-func BalanceHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDContextKey).(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+func BalanceHandler(c echo.Context) error {
+	userID := c.Get("user_id")
+	if userID == nil {
+		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
-	if r.Method == http.MethodPost {
-		amount, err := strconv.ParseFloat(r.FormValue("amount"), 64)
-		if err != nil {
-			http.Error(w, "Invalid amount", http.StatusBadRequest)
-			return
-		}
-
-		// Get user from Redis
-		userJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s", userID)).Result()
-		if err != nil {
-			http.Error(w, "User not found", http.StatusNotFound)
-			return
-		}
-
-		var user models.User
-		if err := json.Unmarshal([]byte(userJSON), &user); err != nil {
-			http.Error(w, "Invalid user data", http.StatusInternalServerError)
-			return
-		}
-
-		// Update balance
-		user.Balance += amount
-		user.UpdatedAt = time.Now()
-
-		// Save updated user to Redis
-		updatedUserJSON, _ := json.Marshal(user)
-		err = database.RedisClient.Set(context.Background(), fmt.Sprintf("user:%s", userID), updatedUserJSON, 0).Err()
-		if err != nil {
-			http.Error(w, "Failed to update balance", http.StatusInternalServerError)
-			return
-		}
-
-		http.Redirect(w, r, "/balance", http.StatusSeeOther)
-		return
+	if c.Request().Method == http.MethodPost {
+		return handleBalanceUpdate(c)
 	}
 
-	// Get user from Redis
-	userJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("user:%s", userID)).Result()
+	var balance float64
+	err := database.DB.QueryRow("SELECT balance FROM users WHERE id = ?", userID).Scan(&balance)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
+		return c.String(http.StatusInternalServerError, "Error fetching balance")
 	}
 
-	var user models.User
-	if err := json.Unmarshal([]byte(userJSON), &user); err != nil {
-		http.Error(w, "Invalid user data", http.StatusInternalServerError)
-		return
-	}
+	return templates.Balance(balance).Render(c.Request().Context(), c.Response().Writer)
+}
 
-	tmpl, err := template.ParseFiles("web/templates/balance.gohtml")
+func handleBalanceUpdate(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+	amountStr := c.FormValue("amount")
+	amount, err := strconv.ParseFloat(amountStr, 64)
 	if err != nil {
-		log.Printf("Failed to parse template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusBadRequest, "Invalid amount")
 	}
 
-	err = tmpl.Execute(w, user.Balance)
+	_, err = database.DB.Exec("UPDATE users SET balance = balance + ? WHERE id = ?", amount, userID)
 	if err != nil {
-		log.Printf("Failed to execute template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "Error updating balance")
 	}
+
+	var newBalance float64
+	err = database.DB.QueryRow("SELECT balance FROM users WHERE id = ?", userID).Scan(&newBalance)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Error fetching updated balance")
+	}
+
+	return c.HTML(http.StatusOK, "<p>Egyenleg sikeresen frissítve! Új egyenleg: "+strconv.FormatFloat(newBalance, 'f', 2, 64)+" Ft</p>")
 }

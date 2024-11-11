@@ -1,0 +1,35 @@
+package templates
+
+import "github.com/drax2gma/smartorders-webui/internal/models"
+
+templ Home(user models.User) {
+    <!DOCTYPE html>
+    <html lang="hu">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Főoldal - SmartOrders</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+    </head>
+    <body class="bg-gray-100">
+        <nav class="bg-blue-600 p-4">
+            <div class="container mx-auto flex justify-between items-center">
+                <a href="/" class="text-white text-2xl font-bold">SmartOrders</a>
+                <div>
+                    <a href="/order" class="text-white mr-4">Rendelés</a>
+                    <a href="/status" class="text-white mr-4">Státusz</a>
+                    <a href="/balance" class="text-white mr-4">Egyenleg</a>
+                    <a href="/logout" class="text-white">Kijelentkezés</a>
+                </div>
+            </div>
+        </nav>
+        <div class="container mx-auto mt-8">
+            <h1 class="text-3xl font-bold mb-4">Üdvözöljük, { user.Name }!</h1>
+            <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+                <p class="mb-2">Email: { user.Email }</p>
+                <p class="mb-2">Egyenleg: { fmt.Sprintf("%.2f", user.Balance) } Ft</p>
+            </div>
+        </div>
+    </body>
+    </html>
+}

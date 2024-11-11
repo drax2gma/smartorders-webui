@@ -1,105 +1,73 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"html/template"
-	"log"
 	"net/http"
-	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
+	"github.com/drax2gma/smartorders-webui/web/templates"
+	"github.com/labstack/echo/v4"
 )
 
-func OrderHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDContextKey).(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+func OrderHandler(c echo.Context) error {
+	userID := c.Get("user_id")
+	if userID == nil {
+		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
-	if r.Method == http.MethodPost {
-		handleOrderCreation(w, r, userID)
-		return
+	if c.Request().Method == http.MethodPost {
+		return handleOrderCreation(c)
 	}
 
-	productsJSON, err := database.RedisClient.Get(context.Background(), "products").Result()
+	// Fetch products from database
+	rows, err := database.DB.Query("SELECT * FROM products")
 	if err != nil {
-		log.Printf("Failed to get products: %v", err)
-		http.Error(w, "Failed to get products", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "Error fetching products")
 	}
+	defer rows.Close()
 
 	var products []models.Product
-	if err := json.Unmarshal([]byte(productsJSON), &products); err != nil {
-		log.Printf("Failed to unmarshal products: %v", err)
-		http.Error(w, "Invalid products data", http.StatusInternalServerError)
-		return
+	for rows.Next() {
+		var p models.Product
+		err := rows.Scan(&p.ID, &p.Megnevezes, &p.Parameterek, &p.Price, &p.Stock)
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Error scanning products")
+		}
+		products = append(products, p)
 	}
 
-	tmpl, err := template.ParseFiles("web/templates/order.gohtml")
-	if err != nil {
-		log.Printf("Failed to parse template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.Execute(w, products)
-	if err != nil {
-		log.Printf("Failed to execute template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	return templates.Order(products).Render(c.Request().Context(), c.Response().Writer)
 }
 
-func handleOrderCreation(w http.ResponseWriter, r *http.Request, userID string) {
-	productID := r.FormValue("product_id")
+func handleOrderCreation(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+	productID := c.FormValue("product_id")
 
-	productJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("product:%s", productID)).Result()
-	if err != nil {
-		log.Printf("Failed to get product: %v", err)
-		http.Error(w, "Product not found", http.StatusNotFound)
-		return
-	}
-
+	// Fetch product details
 	var product models.Product
-	if err := json.Unmarshal([]byte(productJSON), &product); err != nil {
-		log.Printf("Failed to unmarshal product: %v", err)
-		http.Error(w, "Invalid product data", http.StatusInternalServerError)
-		return
+	err := database.DB.QueryRow("SELECT * FROM products WHERE id = ?", productID).Scan(
+		&product.ID, &product.Megnevezes, &product.Parameterek, &product.Price, &product.Stock,
+	)
+	if err != nil {
+		return c.String(http.StatusNotFound, "Product not found")
 	}
 
+	// Create order
 	order := models.Order{
 		ID:         models.GenerateOrderID(userID, productID),
 		UserID:     userID,
 		ProductID:  productID,
 		TotalPrice: product.Price,
 		Status:     "pending",
-		CreatedAt:  time.Now(),
 	}
 
-	orderJSON, err := json.Marshal(order)
+	_, err = database.DB.Exec(`
+        INSERT INTO orders (id, user_id, product_id, total_price, status, created_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `, order.ID, order.UserID, order.ProductID, order.TotalPrice, order.Status)
 	if err != nil {
-		log.Printf("Failed to marshal order: %v", err)
-		http.Error(w, "Failed to create order", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "Error creating order")
 	}
 
-	err = database.RedisClient.Set(context.Background(), fmt.Sprintf("order:%s", order.ID), orderJSON, 0).Err()
-	if err != nil {
-		log.Printf("Failed to save order: %v", err)
-		http.Error(w, "Failed to create order", http.StatusInternalServerError)
-		return
-	}
-
-	err = database.RedisClient.RPush(context.Background(), fmt.Sprintf("user:%s:orders", userID), order.ID).Err()
-	if err != nil {
-		log.Printf("Failed to add order to user's list: %v", err)
-		http.Error(w, "Failed to create order", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/status", http.StatusSeeOther)
+	return c.HTML(http.StatusOK, "<p>Rendelés sikeresen leadva!</p>")
 }

@@ -1,32 +1,36 @@
-// internal/handlers/message.go
 package handlers
 
 import (
-	"context"
-	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
+	"github.com/drax2gma/smartorders-webui/web/templates"
+	"github.com/labstack/echo/v4"
 )
 
-func MessageHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if user is authenticated
-	// ... (implement session check)
-
-	if r.Method == http.MethodPost {
-		messageType := r.FormValue("message_type")
-
-		// Save message to Redis
-		err := database.RedisClient.RPush(context.Background(), "admin:messages", messageType).Err()
-		if err != nil {
-			http.Error(w, "Failed to send message", http.StatusInternalServerError)
-			return
-		}
-
-		http.Redirect(w, r, "/message", http.StatusSeeOther)
-		return
+func MessageHandler(c echo.Context) error {
+	userID := c.Get("user_id")
+	if userID == nil {
+		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
-	tmpl, _ := template.ParseFiles("web/templates/message.gohtml")
-	tmpl.Execute(w, nil)
+	if c.Request().Method == http.MethodPost {
+		return handleMessageSend(c)
+	}
+
+	return templates.Message().Render(c.Request().Context(), c.Response().Writer)
+}
+
+func handleMessageSend(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+	message := c.FormValue("message")
+
+	_, err := database.DB.Exec("INSERT INTO messages (user_id, content, created_at) VALUES (?, ?, ?)",
+		userID, message, time.Now())
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Error sending message")
+	}
+
+	return c.HTML(http.StatusOK, "<p>Üzenet sikeresen elküldve!</p>")
 }

@@ -1,60 +1,35 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"html/template"
-	"log"
 	"net/http"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
+	"github.com/drax2gma/smartorders-webui/web/templates"
+	"github.com/labstack/echo/v4"
 )
 
-func StatusHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDContextKey).(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+func StatusHandler(c echo.Context) error {
+	userID := c.Get("user_id")
+	if userID == nil {
+		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
-	// Get user's order IDs from Redis
-	orderIDs, err := database.RedisClient.LRange(context.Background(), fmt.Sprintf("user:%s:orders", userID), 0, -1).Result()
+	rows, err := database.DB.Query("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC", userID)
 	if err != nil {
-		log.Printf("Failed to get order IDs: %v", err)
-		http.Error(w, "Failed to get orders", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "Error fetching orders")
 	}
+	defer rows.Close()
 
 	var orders []models.Order
-	for _, orderID := range orderIDs {
-		orderJSON, err := database.RedisClient.Get(context.Background(), fmt.Sprintf("order:%s", orderID)).Result()
+	for rows.Next() {
+		var o models.Order
+		err := rows.Scan(&o.ID, &o.UserID, &o.ProductID, &o.TotalPrice, &o.Status, &o.CreatedAt)
 		if err != nil {
-			log.Printf("Failed to get order %s: %v", orderID, err)
-			continue
+			return c.String(http.StatusInternalServerError, "Error scanning orders")
 		}
-
-		var order models.Order
-		if err := json.Unmarshal([]byte(orderJSON), &order); err != nil {
-			log.Printf("Failed to unmarshal order %s: %v", orderID, err)
-			continue
-		}
-
-		orders = append(orders, order)
+		orders = append(orders, o)
 	}
 
-	tmpl, err := template.ParseFiles("web/templates/status.gohtml")
-	if err != nil {
-		log.Printf("Failed to parse template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.Execute(w, orders)
-	if err != nil {
-		log.Printf("Failed to execute template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	return templates.Status(orders).Render(c.Request().Context(), c.Response().Writer)
 }
