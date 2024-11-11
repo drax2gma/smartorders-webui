@@ -30,6 +30,16 @@ templ Login() {
             </form>
             <div id="result" class="mt-4 text-red-500"></div>
         </div>
+        <script>
+            document.body.addEventListener('htmx:afterRequest', function(event) {
+                if (event.detail.successful) {
+                    var response = JSON.parse(event.detail.xhr.responseText);
+                    if (response.redirect) {
+                        window.location.href = response.redirect;
+                    }
+                }
+            });
+        </script>
     </body>
     </html>
 }
