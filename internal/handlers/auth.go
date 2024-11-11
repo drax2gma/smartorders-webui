@@ -1,11 +1,8 @@
 package handlers
 
 import (
-	"crypto/md5"
 	"database/sql"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
@@ -15,11 +12,7 @@ import (
 )
 
 func HomeHandler(c echo.Context) error {
-	userID := c.Get("user_id")
-	if userID == nil {
-		return c.Redirect(http.StatusSeeOther, "/login")
-	}
-
+	userID := c.Get("user_id").(string)
 	var user models.User
 	err := database.DB.QueryRow("SELECT * FROM users WHERE id = ?", userID).Scan(
 		&user.ID, &user.Name, &user.Email, &user.Password, &user.Balance, &user.CreatedAt, &user.UpdatedAt,
@@ -53,10 +46,7 @@ func LoginHandler(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid email or password"})
 	}
 
-	// Create session
-	sessionID := generateSessionID(user.ID)
-	_, err = database.DB.Exec("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)",
-		sessionID, user.ID, time.Now().Add(24*time.Hour))
+	sessionID, err := CreateSession(user.ID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error creating session"})
 	}
@@ -66,7 +56,7 @@ func LoginHandler(c echo.Context) error {
 		Value:    sessionID,
 		HttpOnly: true,
 		Path:     "/",
-		MaxAge:   int(24 * time.Hour.Seconds()),
+		MaxAge:   int(sessionDuration.Seconds()),
 	})
 
 	return c.JSON(http.StatusOK, map[string]string{"redirect": "/"})
@@ -75,11 +65,7 @@ func LoginHandler(c echo.Context) error {
 func LogoutHandler(c echo.Context) error {
 	cookie, err := c.Cookie("session_id")
 	if err == nil {
-		_, err = database.DB.Exec("DELETE FROM sessions WHERE id = ?", cookie.Value)
-		if err != nil {
-			// Log the error, but continue with logout process
-			fmt.Printf("Error deleting session: %v\n", err)
-		}
+		DeleteSession(cookie.Value)
 	}
 
 	c.SetCookie(&http.Cookie{
@@ -99,10 +85,6 @@ func ValidateEmailHandler(c echo.Context) error {
 		return c.String(http.StatusOK, "Érvénytelen email cím")
 	}
 	return c.String(http.StatusOK, "")
-}
-
-func generateSessionID(userID string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(userID+time.Now().String())))[:16]
 }
 
 func isValidEmail(email string) bool {

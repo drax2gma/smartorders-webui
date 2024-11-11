@@ -56,19 +56,20 @@ func createTables() error {
         FOREIGN KEY (product_id) REFERENCES products(id)
     )`
 
-	_, err := DB.Exec(userTable)
-	if err != nil {
-		return err
-	}
+	sessionTable := `CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        expires_at DATETIME,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )`
 
-	_, err = DB.Exec(productTable)
-	if err != nil {
-		return err
-	}
+	tables := []string{userTable, productTable, orderTable, sessionTable}
 
-	_, err = DB.Exec(orderTable)
-	if err != nil {
-		return err
+	for _, table := range tables {
+		_, err := DB.Exec(table)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
