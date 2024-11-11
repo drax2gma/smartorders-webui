@@ -48,16 +48,17 @@ func DeleteSession(sessionID string) error {
 
 func SessionMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		sessionID, err := c.Cookie("session_id")
-		if err != nil {
+		cookie, err := c.Cookie("session_id")
+		if err != nil || cookie.Value == "" {
 			return c.Redirect(http.StatusSeeOther, "/login")
 		}
 
-		userID, err := getUserIDFromSession(sessionID.Value)
-		if err != nil {
+		userID, err := getUserIDFromSession(cookie.Value)
+		if err != nil || userID == "" {
 			return c.Redirect(http.StatusSeeOther, "/login")
 		}
 
+		// Set the user ID in the context for later use
 		c.Set("user_id", userID)
 		return next(c)
 	}

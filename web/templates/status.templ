@@ -15,8 +15,10 @@ templ Status(orders []models.Order) {
         <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
     </head>
     <body class="bg-gray-100">
-        <nav class="bg-blue-600 p-4">
+        <!-- Navigációs sáv -->
+        <nav class="bg-green-600 p-4">
             <div class="container mx-auto flex justify-between items-center">
+                <!-- Logó és menüpontok -->
                 <a href="/" class="text-white text-2xl font-bold">SmartOrders</a>
                 <div>
                     <a href="/order" class="text-white mr-4">Rendelés</a>
@@ -26,17 +28,21 @@ templ Status(orders []models.Order) {
                 </div>
             </div>
         </nav>
-        <div class="container mx-auto mt-8">
-            <h1 class="text-3xl font-bold mb-4">Rendelések státusza</h1>
+
+        <!-- Reszponzív konténer -->
+        <div class="container mx-auto mt-8 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-bold mb-4 text-black">Rendelések státusza</h1>
+
+            <!-- Rendelések táblázata -->
             <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <table class="w-full">
                     <thead>
                         <tr>
-                            <th class="text-left">Rendelés ID</th>
-                            <th class="text-left">Termék</th>
-                            <th class="text-left">Ár</th>
-                            <th class="text-left">Státusz</th>
-                            <th class="text-left">Dátum</th>
+                            <th class="text-left text-gray-800">Rendelés ID</th>
+                            <th class="text-left text-gray-800">Termék</th>
+                            <th class="text-left text-gray-800">Ár</th>
+                            <th class="text-left text-gray-800">Státusz</th>
+                            <th class="text-left text-gray-800">Dátum</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,7 +58,9 @@ templ Status(orders []models.Order) {
                     </tbody>
                 </table>
             </div>
+
         </div>
+
     </body>
     </html>
 }

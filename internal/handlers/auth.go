@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
@@ -12,8 +13,9 @@ import (
 )
 
 func HomeHandler(c echo.Context) error {
+	// Ellenőrizzük, hogy létezik-e a user_id
 	userID, ok := c.Get("user_id").(string)
-	if !ok {
+	if !ok || userID == "" {
 		return c.Redirect(http.StatusSeeOther, "/login")
 	}
 
@@ -94,7 +96,13 @@ func ValidateEmailHandler(c echo.Context) error {
 	return c.String(http.StatusOK, "")
 }
 
+// Validate email to check if it is valid
 func isValidEmail(email string) bool {
-	// Implement email validation logic here
-	return true // Placeholder
+	if email == "" {
+		return false
+	}
+	if !strings.Contains(email, "@") {
+		return false
+	}
+	return true
 }

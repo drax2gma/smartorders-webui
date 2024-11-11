@@ -16,7 +16,7 @@ templ Order(products []models.Product) {
         <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     </head>
     <body class="bg-gray-100">
-        <nav class="bg-blue-600 p-4">
+        <nav class="bg-green-600 p-4">
             <div class="container mx-auto flex justify-between items-center">
                 <a href="/" class="text-white text-2xl font-bold">SmartOrders</a>
                 <div>
@@ -27,27 +27,39 @@ templ Order(products []models.Product) {
                 </div>
             </div>
         </nav>
-        <div class="container mx-auto mt-8">
-            <h1 class="text-3xl font-bold mb-4">Rendelés leadása</h1>
+
+        <!-- Reszponzív konténer -->
+        <div class="container mx-auto mt-8 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-bold mb-4 text-black">Rendelés leadása</h1>
+
+            <!-- Termékek listája -->
             <form hx-post="/order" hx-target="#result" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="product">
-                        Válassz terméket
-                    </label>
-                    <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="product" name="product_id">
+                    <label for="product" class="block text-gray-700 text-sm font-bold mb-2">Válassz terméket</label>
+
+                    <!-- Termékek legördülő menüje -->
+                    <select id="product" name="product_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                         for _, product := range products {
+                            <!-- Termék opció -->
                             <option value={product.ID}>{ product.Megnevezes } - { product.Parameterek } ({ fmt.Sprintf("%.2f", product.Price) } Ft)</option>
                         }
                     </select>
                 </div>
+
+                <!-- Rendelés gomb -->
                 <div class="flex items-center justify-between">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                    <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                         Rendelés leadása
                     </button>
                 </div>
+
             </form>
-            <div id="result" class="mt-4"></div>
+
+            <!-- Eredmény megjelenítése -->
+            <div id="result"></div>
+
         </div>
+
     </body>
     </html>
 }

@@ -34,19 +34,19 @@ func Order(products []models.Product) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"hu\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Rendelés - SmartOrders</title><link href=\"https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css\" rel=\"stylesheet\"><script src=\"https://unpkg.com/htmx.org@1.9.10\"></script></head><body class=\"bg-gray-100\"><nav class=\"bg-blue-600 p-4\"><div class=\"container mx-auto flex justify-between items-center\"><a href=\"/\" class=\"text-white text-2xl font-bold\">SmartOrders</a><div><a href=\"/order\" class=\"text-white mr-4\">Rendelés</a> <a href=\"/status\" class=\"text-white mr-4\">Státusz</a> <a href=\"/balance\" class=\"text-white mr-4\">Egyenleg</a> <a href=\"/logout\" class=\"text-white\">Kijelentkezés</a></div></div></nav><div class=\"container mx-auto mt-8\"><h1 class=\"text-3xl font-bold mb-4\">Rendelés leadása</h1><form hx-post=\"/order\" hx-target=\"#result\" class=\"bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4\"><div class=\"mb-4\"><label class=\"block text-gray-700 text-sm font-bold mb-2\" for=\"product\">Válassz terméket</label> <select class=\"shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline\" id=\"product\" name=\"product_id\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"hu\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Rendelés - SmartOrders</title><link href=\"https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css\" rel=\"stylesheet\"><script src=\"https://unpkg.com/htmx.org@1.9.10\"></script></head><body class=\"bg-gray-100\"><nav class=\"bg-green-600 p-4\"><div class=\"container mx-auto flex justify-between items-center\"><a href=\"/\" class=\"text-white text-2xl font-bold\">SmartOrders</a><div><a href=\"/order\" class=\"text-white mr-4\">Rendelés</a> <a href=\"/status\" class=\"text-white mr-4\">Státusz</a> <a href=\"/balance\" class=\"text-white mr-4\">Egyenleg</a> <a href=\"/logout\" class=\"text-white\">Kijelentkezés</a></div></div></nav><!-- Reszponzív konténer --><div class=\"container mx-auto mt-8 px-4 sm:px-6 lg:px-8\"><h1 class=\"text-3xl font-bold mb-4 text-black\">Rendelés leadása</h1><!-- Termékek listája --><form hx-post=\"/order\" hx-target=\"#result\" class=\"bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4\"><div class=\"mb-4\"><label for=\"product\" class=\"block text-gray-700 text-sm font-bold mb-2\">Válassz terméket</label><!-- Termékek legördülő menüje --><select id=\"product\" name=\"product_id\" class=\"shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, product := range products {
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<option value=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!-- Termék opció --> <option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(product.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 39, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 44, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -59,7 +59,7 @@ func Order(products []models.Product) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(product.Megnevezes)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 39, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 44, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -72,7 +72,7 @@ func Order(products []models.Product) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(product.Parameterek)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 39, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 44, Col: 101}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -85,7 +85,7 @@ func Order(products []models.Product) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.2f", product.Price))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 39, Col: 141}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/order.templ`, Line: 44, Col: 141}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -96,7 +96,7 @@ func Order(products []models.Product) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</select></div><div class=\"flex items-center justify-between\"><button class=\"bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline\" type=\"submit\">Rendelés leadása</button></div></form><div id=\"result\" class=\"mt-4\"></div></div></body></html>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</select></div><!-- Rendelés gomb --><div class=\"flex items-center justify-between\"><button type=\"submit\" class=\"bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline\">Rendelés leadása</button></div></form><!-- Eredmény megjelenítése --><div id=\"result\"></div></div></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
