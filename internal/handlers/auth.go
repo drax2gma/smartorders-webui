@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strings"
 
@@ -46,18 +47,28 @@ func LoginHandler(c echo.Context) error {
 	err := database.DB.QueryRow("SELECT id, password FROM users WHERE email = ?", email).Scan(&user.ID, &hashedPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid email or password"})
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"error": "Hibás email cím vagy jelszó!",
+			})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Database error"})
+		log.Printf("Database error during login: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Belső szerverhiba történt, kérjük próbálja újra később.",
+		})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid email or password"})
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Hibás email cím vagy jelszó!",
+		})
 	}
 
 	sessionID, err := CreateSession(user.ID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error creating session"})
+		log.Printf("Error creating session: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Hiba történt a bejelentkezés során, kérjük próbálja újra később.",
+		})
 	}
 
 	c.SetCookie(&http.Cookie{
@@ -68,7 +79,9 @@ func LoginHandler(c echo.Context) error {
 		MaxAge:   int(sessionDuration.Seconds()),
 	})
 
-	return c.JSON(http.StatusOK, map[string]string{"redirect": "/"})
+	return c.JSON(http.StatusOK, map[string]string{
+		"redirect": "/",
+	})
 }
 
 func LogoutHandler(c echo.Context) error {
