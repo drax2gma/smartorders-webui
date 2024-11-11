@@ -24,7 +24,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Routes
-	e.GET("/", handlers.HomeHandler)
+	e.GET("/", handlers.SessionMiddleware(handlers.HomeHandler))
 	e.GET("/login", handlers.LoginPageHandler)
 	e.POST("/login", handlers.LoginHandler)
 	e.GET("/logout", handlers.LogoutHandler)

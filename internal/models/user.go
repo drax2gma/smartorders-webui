@@ -1,9 +1,9 @@
 package models
 
 import (
-	"crypto/md5"
-	"fmt"
 	"time"
+
+	"github.com/drax2gma/smartorders-webui/internal/utils"
 )
 
 type User struct {
@@ -17,5 +17,5 @@ type User struct {
 }
 
 func GenerateUserID(email string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(email)))[:8]
+	return utils.GenerateXXH64Hash(email)
 }

@@ -1,9 +1,9 @@
 package models
 
 import (
-	"crypto/md5"
-	"fmt"
 	"time"
+
+	"github.com/drax2gma/smartorders-webui/internal/utils"
 )
 
 type Order struct {
@@ -15,6 +15,7 @@ type Order struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-func GenerateOrderID(userID, productID string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(userID+"|"+productID+"|"+time.Now().String())))[:8]
+func GenerateOrderID(userID, productID string, timestamp time.Time) string {
+	input := userID + "|" + productID + "|" + timestamp.String()
+	return utils.GenerateXXH64Hash(input)
 }

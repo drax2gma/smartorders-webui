@@ -12,12 +12,19 @@ import (
 )
 
 func HomeHandler(c echo.Context) error {
-	userID := c.Get("user_id").(string)
+	userID, ok := c.Get("user_id").(string)
+	if !ok {
+		return c.Redirect(http.StatusSeeOther, "/login")
+	}
+
 	var user models.User
 	err := database.DB.QueryRow("SELECT * FROM users WHERE id = ?", userID).Scan(
 		&user.ID, &user.Name, &user.Email, &user.Password, &user.Balance, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.Redirect(http.StatusSeeOther, "/login")
+		}
 		return c.String(http.StatusInternalServerError, "Error fetching user data")
 	}
 

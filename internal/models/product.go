@@ -1,8 +1,7 @@
 package models
 
 import (
-	"crypto/md5"
-	"fmt"
+	"github.com/drax2gma/smartorders-webui/internal/utils"
 )
 
 type Product struct {
@@ -14,5 +13,6 @@ type Product struct {
 }
 
 func GenerateProductID(megnevezes, parameterek string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(megnevezes+"|"+parameterek)))[:8]
+	input := megnevezes + "|" + parameterek
+	return utils.GenerateXXH64Hash(input)
 }

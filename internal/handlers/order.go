@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/drax2gma/smartorders-webui/internal/database"
 	"github.com/drax2gma/smartorders-webui/internal/models"
@@ -54,7 +55,7 @@ func handleOrderCreation(c echo.Context) error {
 
 	// Create order
 	order := models.Order{
-		ID:         models.GenerateOrderID(userID, productID),
+		ID:         models.GenerateOrderID(userID, productID, time.Now()),
 		UserID:     userID,
 		ProductID:  productID,
 		TotalPrice: product.Price,
